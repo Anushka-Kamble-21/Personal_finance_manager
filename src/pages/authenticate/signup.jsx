@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";  // Import useNavigate
-import styles from "./signup.module.css"; 
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+import styles from "./signup.module.css";
 
-const Signup = () => {
+const Signup = ({ setUser }) => { // Accept setUser as a prop
   const navigate = useNavigate(); // Initialize navigate
 
   const [formData, setFormData] = useState({
@@ -13,19 +13,45 @@ const Signup = () => {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState(""); // Initialize error state
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
 
-    // Redirect to avatar selection after a short delay
-    setTimeout(() => {
-      navigate("/avatar-selection");
-    }, 1000);
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json(); // Parse the response
+      console.log("Backend Response:", data); // Debug log
+
+      if (response.ok) {
+        // Save token and user data to localStorage
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        // Update user state using setUser
+        setUser(data.user);
+
+        alert("Signup Successful! Please select an avatar.");
+        navigate("/avatar-selection"); // Redirect to the avatar selection page
+      } else {
+        setError(data.message || "Signup Failed"); // Set error message
+        alert(data.message || "Signup Failed"); // Show error message
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setError("An error occurred"); // Set error message
+      alert("An error occurred"); // Show error message
+    }
   };
 
   return (
@@ -71,11 +97,16 @@ const Signup = () => {
               required
               className={styles.inputField}
             />
-            <button type="submit" className={styles.signupBtn}>Sign Up</button>
+            <button type="submit" className={styles.signupBtn}>
+              Sign Up
+            </button>
           </form>
         ) : (
           <p className={styles.successMessage}>🎉 Congrats! You are a user. 🎉</p>
         )}
+
+        {/* Display error message if there's an error */}
+        {error && <p className={styles.errorMessage}>{error}</p>}
       </div>
     </div>
   );
